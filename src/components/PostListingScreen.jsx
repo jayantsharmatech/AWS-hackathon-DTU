@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Mic, Square, CheckCircle2, Upload, MapPin, AlertCircle, RefreshCw } from 'lucide-react';
+import { Camera, Mic, Square, CheckCircle2, Upload, MapPin, RefreshCw } from 'lucide-react';
 
 export default function PostListingScreen({ onPostCreated }) {
   const [image, setImage] = useState(null);
@@ -7,34 +7,29 @@ export default function PostListingScreen({ onPostCreated }) {
   const [category, setCategory] = useState('Concrete Rubble');
   const [priceType, setPriceType] = useState('Free');
   const [price, setPrice] = useState('');
-  const [noteMode, setNoteMode] = useState('voice'); // 'voice' | 'text'
+  const [noteMode, setNoteMode] = useState('voice');
   const [textNote, setTextNote] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState(null);
   const [recordingTime, setRecordingTime] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [autoDetectedLoc, setAutoDetectedLoc] = useState('Construction Site, Sector 62');
+  const autoDetectedLoc = 'Construction Site, Sector 62';
 
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const timerRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Mock Auto-AI Material Classifier on photo select
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
       setImage(file);
       setImagePreview(URL.createObjectURL(file));
-
-      // Simulate AI waste auto-classification
       const categories = ['Red Brick', 'Concrete Rubble', 'Tiles & Ceramic', 'Steel Rebar'];
-      const randomCategory = categories[Math.floor(Math.random() * categories.length)];
-      setCategory(randomCategory);
+      setCategory(categories[Math.floor(Math.random() * categories.length)]);
     }
   };
 
-  // Voice Note Recorder Controls
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -42,14 +37,12 @@ export default function PostListingScreen({ onPostCreated }) {
       audioChunksRef.current = [];
 
       mediaRecorderRef.current.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
       };
 
       mediaRecorderRef.current.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        setAudioBlob(audioBlob);
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        setAudioBlob(blob);
       };
 
       mediaRecorderRef.current.start();
@@ -59,7 +52,7 @@ export default function PostListingScreen({ onPostCreated }) {
       timerRef.current = setInterval(() => {
         setRecordingTime((prev) => prev + 1);
       }, 1000);
-    } catch (err) {
+    } catch {
       alert('Microphone access denied or unavailable on this browser.');
     }
   };
@@ -82,16 +75,6 @@ export default function PostListingScreen({ onPostCreated }) {
 
     setIsSubmitting(true);
 
-    // Build FormData payload structure (as required for backend API)
-    const formData = new FormData();
-    formData.append('category', category);
-    formData.append('priceType', priceType);
-    formData.append('price', priceType === 'Paid' ? price : '0');
-    formData.append('location', autoDetectedLoc);
-    if (image) formData.append('image', image);
-    if (audioBlob) formData.append('audio', audioBlob, 'voicenote.webm');
-    formData.append('description', textNote || 'Voice note attached. Tap to play.');
-
     setTimeout(() => {
       const newListing = {
         id: Date.now(),
@@ -101,7 +84,7 @@ export default function PostListingScreen({ onPostCreated }) {
         imageUrl: imagePreview,
         location: autoDetectedLoc,
         distance: '0.1 km',
-        description: textNote || '50 bags of clean demolition waste ready for immediate pickup.',
+        description: textNote || 'Demolition waste ready for immediate pickup.',
         hasVoiceNote: !!audioBlob,
         audioUrl: audioBlob ? URL.createObjectURL(audioBlob) : null,
         phone: '9876543210',
@@ -125,7 +108,6 @@ export default function PostListingScreen({ onPostCreated }) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* STEP 1: PHOTO CAPTURE */}
           <div className="space-y-2">
             <label className="text-xs font-black text-amber-400 tracking-wider uppercase flex items-center gap-1">
               <span>1. SNAP WASTE PHOTO</span>
@@ -167,7 +149,6 @@ export default function PostListingScreen({ onPostCreated }) {
             )}
           </div>
 
-          {/* STEP 2: CATEGORY & PRICE */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-400 uppercase mb-1">
@@ -216,7 +197,6 @@ export default function PostListingScreen({ onPostCreated }) {
             </div>
           )}
 
-          {/* STEP 3: VOICE OR TEXT HERO INGESTION */}
           <div className="space-y-3 pt-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-black text-amber-400 tracking-wider uppercase">
@@ -266,9 +246,6 @@ export default function PostListingScreen({ onPostCreated }) {
                         <Square className="w-8 h-8 fill-current" />
                       </button>
                     </div>
-                    <span className="text-xs text-slate-400 block font-bold">
-                      Tap red square when finished
-                    </span>
                   </div>
                 ) : audioBlob ? (
                   <div className="flex items-center justify-between bg-emerald-950/40 border border-emerald-500/40 p-3 rounded-xl">
@@ -296,9 +273,6 @@ export default function PostListingScreen({ onPostCreated }) {
                     <span className="font-bold text-white text-sm block">
                       TAP & SPEAK IN HINDI / ENGLISH
                     </span>
-                    <span className="text-slate-400 text-xs block">
-                      No typing needed. Explain location & quantity.
-                    </span>
                   </div>
                 )}
               </div>
@@ -313,7 +287,6 @@ export default function PostListingScreen({ onPostCreated }) {
             )}
           </div>
 
-          {/* LOCATION AUTO-DETECT */}
           <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center justify-between text-xs">
             <div className="flex items-center gap-2 text-slate-300">
               <MapPin className="w-4 h-4 text-emerald-400" />
@@ -322,7 +295,6 @@ export default function PostListingScreen({ onPostCreated }) {
             <span className="text-emerald-400 font-mono font-bold">GPS ACTIVE</span>
           </div>
 
-          {/* SUBMIT BUTTON */}
           <button
             type="submit"
             disabled={isSubmitting}
