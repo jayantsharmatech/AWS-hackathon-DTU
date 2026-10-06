@@ -5,52 +5,38 @@ import FeedScreen from './components/FeedScreen';
 import PostListingScreen from './components/PostListingScreen';
 import { Truck, CheckCircle2, X } from 'lucide-react';
 
-// Mock Initial Feed Data for C&D Waste Market
-const MOCK_INITIAL_LISTINGS = [
-  {
-    id: 1,
-    category: 'Red Brick',
-    priceType: 'Free',
-    price: '0',
-    imageUrl: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80',
-    location: 'Connaught Place, Site 4',
-    distance: '0.8 km',
-    description: 'Clean red brick bat debris, ~2 brass quantity. Free to haul away immediately.',
-    hasVoiceNote: true,
-    phone: '9811223344',
-    sellerName: 'Sharma Contractors',
-    timeAgo: '10 mins ago'
-  },
-  {
-    id: 2,
-    category: 'Concrete Rubble',
-    priceType: 'Paid',
-    price: '800',
-    imageUrl: 'https://images.unsplash.com/photo-1590069261209-f8e9b8642343?auto=format&fit=crop&w=600&q=80',
-    location: 'Sector 62, Metro Pillar 12',
-    distance: '2.4 km',
-    description: 'Crushed concrete slab rubble ideal for road filling & foundations. Total 1 Dumper load.',
-    hasVoiceNote: false,
-    phone: '9876543210',
-    sellerName: 'Verma Masons',
-    timeAgo: '1 hour ago'
-  }
-];
+// Deployed AWS API Gateway Endpoint URL
+const API_BASE_URL = 'https://6jzwkohkx5.execute-api.ap-south-1.amazonaws.com';
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('feed'); // 'feed' | 'post'
-  const [listings, setListings] = useState(MOCK_INITIAL_LISTINGS);
+  const [listings, setListings] = useState([]); 
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [selectedTruckModal, setSelectedTruckModal] = useState(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [isLoadingBackend, setIsLoadingBackend] = useState(true);
 
-  // Check login session from localStorage
+  // Check login session & fetch live listings from AWS backend on mount
   useEffect(() => {
     const storedUser = localStorage.getItem('ecobuild_user');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
+
+    // Fetch live listings from API Gateway GET /listings
+    fetch(`${API_BASE_URL}/listings`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setListings(data);
+        }
+        setIsLoadingBackend(false);
+      })
+      .catch((err) => {
+        console.error('Failed to fetch live AWS listings:', err);
+        setIsLoadingBackend(false);
+      });
 
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
@@ -69,9 +55,47 @@ export default function App() {
     setUser(null);
   };
 
-  const handlePostCreated = (newListing) => {
-    setListings([newListing, ...listings]);
-    setActiveTab('feed');
+  // Properly await AWS POST sync and use backend response item before updating feed state
+  const handlePostCreated = async (newListing) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/listings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newListing),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.listing) {
+        // Use the exact item returned from AWS (ensures PK and all fields match backend)
+        setListings((prevListings) => [data.listing, ...prevListings]);
+      } else {
+        setListings((prevListings) => [newListing, ...prevListings]);
+      }
+    } catch (err) {
+      console.error('Failed to sync new listing with AWS backend:', err);
+      setListings((prevListings) => [newListing, ...prevListings]);
+    } finally {
+      setActiveTab('feed');
+    }
+  };
+
+  // ENHANCED DELETE HANDLER: Optimistically update UI and call AWS DELETE
+  const handleDeleteListing = async (listingIdentifier) => {
+    setListings(listings.filter((item) => {
+      const itemId = String(item.id || '');
+      const itemPK = String(item.PK || '').replace('LISTING#', '');
+      const target = String(listingIdentifier);
+      return itemId !== target && itemPK !== target;
+    }));
+
+    try {
+      await fetch(`${API_BASE_URL}/listings?id=${listingIdentifier}`, {
+        method: 'DELETE',
+      });
+    } catch (err) {
+      console.error('Failed to delete listing from backend:', err);
+    }
   };
 
   return (
@@ -88,7 +112,17 @@ export default function App() {
         {!user ? (
           <LoginScreen onLoginSuccess={setUser} />
         ) : activeTab === 'feed' ? (
-          <FeedScreen listings={listings} onBookTruck={(item) => setSelectedTruckModal(item)} />
+          isLoadingBackend ? (
+            <div className="text-center py-20 text-slate-400 text-sm animate-pulse">
+              Syncing live AWS database...
+            </div>
+          ) : (
+            <FeedScreen 
+              listings={listings} 
+              onBookTruck={(item) => setSelectedTruckModal(item)} 
+              onDeleteListing={handleDeleteListing}
+            />
+          )
         ) : (
           <PostListingScreen onPostCreated={handlePostCreated} />
         )}
