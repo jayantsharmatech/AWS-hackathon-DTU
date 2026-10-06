@@ -125,20 +125,42 @@ export default function PostListingScreen({ onPostCreated }) {
     }
   };
 
-  // Convert image to Base64 so it persists on AWS DynamoDB across refreshes
+  // Compress image via HTML Canvas to keep size well under DynamoDB's 400KB limit
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const maxSizeInBytes = 2 * 1024 * 1024; // Keep under 2MB for DynamoDB safety
-      if (file.size > maxSizeInBytes) {
-        alert('Image size is too large! Please choose an image under 2MB.');
-        e.target.value = null;
-        return;
-      }
-
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 600;
+          const MAX_HEIGHT = 600;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Compress to JPEG with 0.7 quality to guarantee small payload size for DynamoDB
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          setImagePreview(compressedDataUrl);
+        };
+        img.src = event.target.result;
       };
       reader.readAsDataURL(file);
     }
@@ -294,7 +316,7 @@ export default function PostListingScreen({ onPostCreated }) {
                   <Camera className="w-8 h-8" />
                 </div>
                 <span className="font-black text-white text-base">TAP TO CAMERA / UPLOAD</span>
-                <span className="text-slate-400 text-xs">Max size: 2MB</span>
+                <span className="text-slate-400 text-xs">Auto-compressed for AWS</span>
               </button>
             )}
           </div>
