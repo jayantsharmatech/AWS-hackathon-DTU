@@ -30,6 +30,8 @@ export default function App() {
       .then((data) => {
         if (Array.isArray(data)) {
           setListings(data);
+        } else if (data.body) {
+          setListings(JSON.parse(data.body));
         }
         setIsLoadingBackend(false);
       })
@@ -55,7 +57,6 @@ export default function App() {
     setUser(null);
   };
 
-  // Properly await AWS POST sync and use backend response item before updating feed state
   const handlePostCreated = async (newListing) => {
     try {
       const response = await fetch(`${API_BASE_URL}/listings`, {
@@ -67,7 +68,6 @@ export default function App() {
       const data = await response.json();
       
       if (response.ok && data.listing) {
-        // Use the exact item returned from AWS (ensures PK and all fields match backend)
         setListings((prevListings) => [data.listing, ...prevListings]);
       } else {
         setListings((prevListings) => [newListing, ...prevListings]);
@@ -80,7 +80,6 @@ export default function App() {
     }
   };
 
-  // ENHANCED DELETE HANDLER: Optimistically update UI and call AWS DELETE
   const handleDeleteListing = async (listingIdentifier) => {
     setListings(listings.filter((item) => {
       const itemId = String(item.id || '');
@@ -90,8 +89,10 @@ export default function App() {
     }));
 
     try {
-      await fetch(`${API_BASE_URL}/listings?id=${listingIdentifier}`, {
+      await fetch(`${API_BASE_URL}/listings`, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: listingIdentifier }),
       });
     } catch (err) {
       console.error('Failed to delete listing from backend:', err);
@@ -99,87 +100,103 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950">
-      <Navbar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        user={user}
-        onLogout={handleLogout}
-        isOnline={isOnline}
-      />
-
-      <main className="max-w-md mx-auto">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-amber-500 selection:text-white flex flex-col justify-between">
+      
+      <div className="flex-1 flex flex-col">
         {!user ? (
-          <LoginScreen onLoginSuccess={setUser} />
-        ) : activeTab === 'feed' ? (
-          isLoadingBackend ? (
-            <div className="text-center py-20 text-slate-400 text-sm animate-pulse">
-              Syncing live AWS database...
-            </div>
-          ) : (
-            <FeedScreen 
-              listings={listings} 
-              onBookTruck={(item) => setSelectedTruckModal(item)} 
-              onDeleteListing={handleDeleteListing}
-            />
-          )
+          <div className="flex-1 flex flex-col items-center justify-center p-4">
+            <LoginScreen onLoginSuccess={setUser} />
+          </div>
         ) : (
-          <PostListingScreen onPostCreated={handlePostCreated} />
+          <>
+            <Navbar
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              user={user}
+              onLogout={handleLogout}
+              isOnline={isOnline}
+            />
+
+            <main className="max-w-3xl mx-auto py-4 flex-1 w-full px-4">
+              {activeTab === 'feed' ? (
+                isLoadingBackend ? (
+                  <div className="text-center py-20 text-slate-400 text-xs font-bold animate-pulse">
+                    Syncing live AWS cloud database...
+                  </div>
+                ) : (
+                  <FeedScreen 
+                    listings={listings} 
+                    onBookTruck={(item) => setSelectedTruckModal(item)} 
+                    onDeleteListing={handleDeleteListing}
+                  />
+                )
+              ) : (
+                <PostListingScreen onPostCreated={handlePostCreated} />
+              )}
+            </main>
+          </>
         )}
-      </main>
+      </div>
+
+      {/* Global Copyright Footer (Always at the bottom of every screen) */}
+      <footer className="py-5 text-center text-xs text-slate-400 font-medium border-t border-slate-200 bg-white">
+        © {new Date().getFullYear()} EcoBuild Marketplace. Developed by <strong className="text-slate-700">Kernel_Devs</strong>. All rights reserved.
+      </footer>
 
       {/* Dumper Pickup Truck Booking Modal */}
       {selectedTruckModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
-          <div className="bg-slate-900 border-2 border-amber-500 rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl relative">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl relative">
             <button
               onClick={() => {
                 setSelectedTruckModal(null);
                 setBookingSuccess(false);
               }}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white"
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-colors"
             >
-              <X className="w-6 h-6" />
+              <X className="w-4 h-4" />
             </button>
 
             {!bookingSuccess ? (
               <>
                 <div className="flex items-center gap-3">
-                  <div className="p-3 bg-amber-500 text-slate-950 rounded-2xl font-black">
-                    <Truck className="w-8 h-8" />
+                  <div className="p-3 bg-slate-900 text-amber-400 rounded-2xl font-black shadow-sm">
+                    <Truck className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-black text-white">BOOK DUMPER TRUCK</h3>
-                    <p className="text-xs text-slate-400">Direct logistics dispatch to site</p>
+                    <h3 className="text-base font-black text-slate-900">Book Dumper Truck</h3>
+                    <p className="text-xs text-slate-500">Direct logistics dispatch to site</p>
                   </div>
                 </div>
 
-                <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800 text-xs space-y-1">
-                  <div className="text-amber-400 font-bold uppercase">{selectedTruckModal.category}</div>
-                  <div className="text-slate-300">{selectedTruckModal.location}</div>
-                  <div className="text-slate-500">Estimated Transport Cost: ₹1,200 / trip</div>
+                <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 text-xs space-y-1">
+                  <div className="text-amber-600 font-bold uppercase">{selectedTruckModal.category}</div>
+                  <div className="text-slate-800 font-medium">{selectedTruckModal.location}</div>
+                  <div className="text-slate-400 font-mono text-[11px]">Estimated Transport Cost: ₹1,200 / trip</div>
                 </div>
 
                 <button
                   onClick={() => setBookingSuccess(true)}
-                  className="w-full bg-emerald-500 text-slate-950 font-black py-4 rounded-2xl text-lg shadow-lg touch-target"
+                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-3.5 rounded-2xl text-sm shadow-md transition-all active:scale-95"
                 >
-                  CONFIRM TRUCK DISPATCH
+                  Confirm Truck Dispatch
                 </button>
               </>
             ) : (
               <div className="text-center py-6 space-y-3">
-                <CheckCircle2 className="w-16 h-16 text-emerald-400 mx-auto animate-bounce" />
-                <h3 className="text-xl font-black text-white">TRUCK BOOKED!</h3>
-                <p className="text-xs text-slate-400">
-                  Driver assigned. You will receive a call shortly to confirm site access.
+                <div className="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-2xl flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-7 h-7" />
+                </div>
+                <h3 className="text-lg font-black text-slate-900">Truck Booked Successfully!</h3>
+                <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                  Driver assigned. You will receive a verification call shortly to confirm site access.
                 </p>
                 <button
                   onClick={() => {
                     setSelectedTruckModal(null);
                     setBookingSuccess(false);
                   }}
-                  className="bg-slate-800 text-white text-xs font-bold px-6 py-3 rounded-xl border border-slate-700"
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-900 text-xs font-bold px-6 py-2.5 rounded-xl border border-slate-200 transition-colors"
                 >
                   Close
                 </button>
@@ -188,6 +205,7 @@ export default function App() {
           </div>
         </div>
       )}
+
     </div>
   );
 }

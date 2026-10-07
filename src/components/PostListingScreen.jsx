@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Mic, Square, CheckCircle2, Upload, MapPin, RefreshCw, Phone } from 'lucide-react';
+import { Camera, Mic, Square, CheckCircle2, Upload, MapPin, RefreshCw, Phone, Sparkles } from 'lucide-react';
 
 const API_BASE_URL = 'https://6jzwkohkx5.execute-api.ap-south-1.amazonaws.com';
 
@@ -44,12 +44,10 @@ export default function PostListingScreen({ onPostCreated }) {
     }
   }, []);
 
-  // Fully dynamic AI text & speech parser for categorization, free/paid status, and pricing
   const handleSmartTextChange = (rawText) => {
     setTextNote(rawText);
     const lower = rawText.toLowerCase();
 
-    // 1. Dynamic Category Auto-Detection (Supports English, Hindi & Hinglish keywords)
     if (
       lower.includes('brick') || lower.includes('eet') || lower.includes('eent') || 
       lower.includes('eeton') || lower.includes('eetein')
@@ -72,7 +70,6 @@ export default function PostListingScreen({ onPostCreated }) {
       setCategory('Steel Rebar');
     }
 
-    // 2. Dynamic Free vs Paid Detection
     const isFree = 
       lower.includes('free') || lower.includes('le jao') || lower.includes('muft') || 
       lower.includes('hatao') || lower.includes('fokat') || lower.includes('koi paisa nahi');
@@ -83,7 +80,6 @@ export default function PostListingScreen({ onPostCreated }) {
       return;
     }
 
-    // 3. Dynamic Paid Pricing & Spoken Number/Word Extraction
     const isPaidIntent = 
       lower.includes('sell') || lower.includes('rs') || lower.includes('₹') || 
       lower.includes('price') || lower.includes('cost') || lower.includes('chahiye') || 
@@ -92,20 +88,14 @@ export default function PostListingScreen({ onPostCreated }) {
 
     if (isPaidIntent) {
       setPriceType('Paid');
-
       let calculatedPrice = null;
 
       if (lower.includes('hazaar') || lower.includes('thousand')) {
         calculatedPrice = 1000;
         if (lower.includes('do') || lower.includes('two')) calculatedPrice = 2000;
         if (lower.includes('teen') || lower.includes('three')) calculatedPrice = 3000;
-        if (lower.includes('char') || lower.includes('four')) calculatedPrice = 4000;
-        if (lower.includes('paanch') || lower.includes('five')) calculatedPrice = 5000;
       } else if (lower.includes('sau') || lower.includes('hundred')) {
         calculatedPrice = 100;
-        if (lower.includes('paanch sau') || lower.includes('five hundred')) calculatedPrice = 500;
-        if (lower.includes('do sau') || lower.includes('two hundred')) calculatedPrice = 200;
-        if (lower.includes('teen sau') || lower.includes('three hundred')) calculatedPrice = 300;
       }
 
       const numbers = rawText.match(/\d+/g);
@@ -125,7 +115,6 @@ export default function PostListingScreen({ onPostCreated }) {
     }
   };
 
-  // Compress image via HTML Canvas to keep size well under DynamoDB's 400KB limit
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -156,7 +145,6 @@ export default function PostListingScreen({ onPostCreated }) {
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
 
-          // Compress to JPEG with 0.7 quality to guarantee small payload size for DynamoDB
           const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
           setImagePreview(compressedDataUrl);
         };
@@ -251,7 +239,6 @@ export default function PostListingScreen({ onPostCreated }) {
       timeAgo: 'Just now'
     };
 
-    // Save directly to live AWS DynamoDB backend
     fetch(`${API_BASE_URL}/listings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -270,20 +257,27 @@ export default function PostListingScreen({ onPostCreated }) {
   };
 
   return (
-    <div className="max-w-md mx-auto p-4 space-y-6 pb-24">
-      <div className="bg-slate-900 border-2 border-slate-800 rounded-3xl p-5 space-y-5 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <h2 className="text-xl font-black text-white tracking-wide">POST C&D WASTE</h2>
-          <span className="text-xs bg-amber-500/20 text-amber-400 font-bold px-3 py-1 rounded-full border border-amber-500/30">
-            AUTO AI PARSER
+    <div className="max-w-xl mx-auto p-4 space-y-6 pb-24">
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 space-y-6 shadow-sm">
+        
+        {/* Form Header */}
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div>
+            <h2 className="text-xl font-black text-slate-900 tracking-tight">Post C&D Waste Listing</h2>
+            <p className="text-xs text-slate-500">Provide material details and media for verified pickup.</p>
+          </div>
+          <span className="inline-flex items-center gap-1 text-[11px] bg-amber-50 text-amber-700 font-bold px-3 py-1 rounded-full border border-amber-200 shadow-2xs">
+            <Sparkles className="w-3 h-3 text-amber-500" /> AI Auto-Parser
           </span>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          
+          {/* Step 1: Photo Upload */}
           <div className="space-y-2">
-            <label className="text-xs font-black text-amber-400 tracking-wider uppercase flex items-center gap-1">
-              <span>1. SNAP WASTE PHOTO</span>
-              <span className="text-red-400">*</span>
+            <label className="text-xs font-bold text-slate-900 tracking-wide uppercase flex items-center gap-1">
+              <span>1. Material Photo</span>
+              <span className="text-red-500">*</span>
             </label>
 
             <input
@@ -296,34 +290,35 @@ export default function PostListingScreen({ onPostCreated }) {
             />
 
             {imagePreview ? (
-              <div className="relative h-48 rounded-2xl overflow-hidden border-2 border-amber-500">
+              <div className="relative h-52 rounded-2xl overflow-hidden border border-slate-200 shadow-xs">
                 <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                 <button
                   type="button"
                   onClick={() => fileInputRef.current.click()}
-                  className="absolute bottom-3 right-3 bg-slate-950/90 text-white p-2.5 rounded-xl text-xs font-bold flex items-center gap-1 border border-slate-700 shadow-md"
+                  className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-md text-slate-900 hover:bg-white px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-slate-200 shadow-sm transition-colors"
                 >
-                  <RefreshCw className="w-4 h-4 text-amber-400" /> RETAKE
+                  <RefreshCw className="w-3.5 h-3.5 text-amber-600" /> Retake Photo
                 </button>
               </div>
             ) : (
               <button
                 type="button"
                 onClick={() => fileInputRef.current.click()}
-                className="w-full h-40 border-2 border-dashed border-amber-500/50 bg-slate-950 hover:bg-slate-800/50 rounded-2xl flex flex-col items-center justify-center space-y-2 transition-colors"
+                className="w-full h-44 border-2 border-dashed border-slate-200 hover:border-slate-400 bg-slate-50 hover:bg-slate-100/50 rounded-2xl flex flex-col items-center justify-center space-y-2 transition-all"
               >
-                <div className="w-14 h-14 bg-amber-500 text-slate-950 rounded-full flex items-center justify-center shadow-lg">
-                  <Camera className="w-8 h-8" />
+                <div className="w-12 h-12 bg-slate-900 text-amber-400 rounded-2xl flex items-center justify-center shadow-sm">
+                  <Camera className="w-6 h-6" />
                 </div>
-                <span className="font-black text-white text-base">TAP TO CAMERA / UPLOAD</span>
-                <span className="text-slate-400 text-xs">Auto-compressed for AWS</span>
+                <span className="font-bold text-slate-900 text-sm">Tap to Camera or Upload Photo</span>
+                <span className="text-slate-400 text-xs">Auto-compressed for instant AWS sync</span>
               </button>
             )}
           </div>
 
+          {/* Contact Phone */}
           <div>
-            <label className="block text-xs font-bold text-slate-400 uppercase mb-1 flex items-center gap-1">
-              <Phone className="w-3.5 h-3.5 text-amber-400" /> Mobile Number <span className="text-red-400">*</span>
+            <label className="block text-xs font-bold text-slate-900 uppercase mb-1.5 flex items-center gap-1">
+              <Phone className="w-3.5 h-3.5 text-amber-600" /> Mobile Number <span className="text-red-500">*</span>
             </label>
             <input
               type="tel"
@@ -331,17 +326,18 @@ export default function PostListingScreen({ onPostCreated }) {
               onChange={(e) => setSellerPhone(e.target.value)}
               placeholder="e.g. 9876543210"
               maxLength={10}
-              className="w-full bg-slate-950 border-2 border-slate-700 text-white font-bold rounded-xl p-3 text-sm focus:border-amber-500 focus:outline-none"
+              className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-bold rounded-xl p-3 text-sm focus:bg-white focus:border-slate-400 focus:outline-none transition-colors"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          {/* Category & Price Type */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Category (Auto)</label>
+              <label className="block text-xs font-bold text-slate-900 uppercase mb-1.5">Category (Auto-Detected)</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full bg-slate-950 border-2 border-slate-700 text-white font-bold rounded-xl p-3 text-sm focus:border-amber-500 focus:outline-none"
+                className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-bold rounded-xl p-3 text-sm focus:bg-white focus:border-slate-400 focus:outline-none transition-colors"
               >
                 <option value="Red Brick">Red Brick</option>
                 <option value="Concrete Rubble">Concrete Rubble</option>
@@ -352,11 +348,11 @@ export default function PostListingScreen({ onPostCreated }) {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Price Type (Auto)</label>
+              <label className="block text-xs font-bold text-slate-900 uppercase mb-1.5">Price Structure</label>
               <select
                 value={priceType}
                 onChange={(e) => setPriceType(e.target.value)}
-                className="w-full bg-slate-950 border-2 border-slate-700 text-white font-bold rounded-xl p-3 text-sm focus:border-amber-500 focus:outline-none"
+                className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-bold rounded-xl p-3 text-sm focus:bg-white focus:border-slate-400 focus:outline-none transition-colors"
               >
                 <option value="Free">Free Pickup</option>
                 <option value="Paid">Paid / For Sale</option>
@@ -366,69 +362,70 @@ export default function PostListingScreen({ onPostCreated }) {
 
           {priceType === 'Paid' && (
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Extracted Price (₹)</label>
+              <label className="block text-xs font-bold text-slate-900 uppercase mb-1.5">Price (₹)</label>
               <input
                 type="number"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 placeholder="e.g. 500"
-                className="w-full bg-slate-950 border-2 border-slate-700 text-amber-400 font-bold rounded-xl p-3 text-lg focus:border-amber-500 focus:outline-none"
+                className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-bold rounded-xl p-3 text-base focus:bg-white focus:border-slate-400 focus:outline-none transition-colors"
               />
             </div>
           )}
 
-          <div className="space-y-3 pt-2">
+          {/* Step 2: Voice or Text Note */}
+          <div className="space-y-3 pt-2 border-t border-slate-100">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-black text-amber-400 tracking-wider uppercase">
-                2. SPEAK IN ANY LANGUAGE OR TYPE
+              <label className="text-xs font-bold text-slate-900 tracking-wide uppercase">
+                2. Voice Note / Description Note
               </label>
             </div>
 
-            <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 mb-2">
+            <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
               <button
                 type="button"
                 onClick={() => setNoteMode('voice')}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors ${
-                  noteMode === 'voice' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                  noteMode === 'voice' ? 'bg-white text-slate-900 shadow-xs border border-slate-200/60' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                🎙 Voice Note (Auto-Detect)
+                🎙 Voice Note (AI Parser)
               </button>
               <button
                 type="button"
                 onClick={() => setNoteMode('text')}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors ${
-                  noteMode === 'text' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                  noteMode === 'text' ? 'bg-white text-slate-900 shadow-xs border border-slate-200/60' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                ⌨️ Type Text
+                ⌨️ Type Description
               </button>
             </div>
 
             {noteMode === 'voice' ? (
-              <div className="bg-slate-950 border-2 border-slate-800 rounded-2xl p-4 text-center space-y-3">
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-center space-y-3">
                 {isRecording ? (
                   <div className="space-y-3">
-                    <div className="inline-flex items-center gap-2 bg-red-500/20 text-red-400 font-mono font-bold px-4 py-2 rounded-full border border-red-500/40 animate-pulse">
-                      <span className="w-3 h-3 bg-red-500 rounded-full animate-ping" />
-                      LISTENING: 00:0{recordingTime}s
+                    <div className="inline-flex items-center gap-2 bg-red-50 text-red-600 font-mono font-bold px-4 py-1.5 rounded-full border border-red-200 animate-pulse">
+                      <span className="w-2.5 h-2.5 bg-red-600 rounded-full animate-ping" />
+                      RECORDING: 00:0{recordingTime}s
                     </div>
                     <div>
                       <button
                         type="button"
                         onClick={stopRecording}
-                        className="w-20 h-20 bg-red-500 text-white rounded-full mx-auto flex items-center justify-center shadow-2xl active:scale-95 transition-transform"
+                        className="w-16 h-16 bg-red-600 text-white rounded-full mx-auto flex items-center justify-center shadow-md active:scale-95 transition-transform"
                       >
-                        <Square className="w-8 h-8 fill-current" />
+                        <Square className="w-6 h-6 fill-current" />
                       </button>
                     </div>
-                    <span className="text-xs text-slate-400 block font-bold">Tap red square when finished</span>
+                    <span className="text-xs text-slate-500 block font-medium">Tap red square when finished speaking</span>
                   </div>
                 ) : audioBlob ? (
-                  <div className="flex items-center justify-between bg-emerald-950/40 border border-emerald-500/40 p-3 rounded-xl">
-                    <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold">
-                      <CheckCircle2 className="w-5 h-5" />
-                      <span>AUDIO RECORDED & AUTO-PARSED</span>
+                  <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl">
+                    <div className="flex items-center gap-2 text-emerald-800 text-xs font-bold">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>Audio Recorded & Auto-Parsed Successfully</span>
                     </div>
                     <button
                       type="button"
@@ -436,9 +433,9 @@ export default function PostListingScreen({ onPostCreated }) {
                         setAudioBlob(null);
                         setTextNote('');
                       }}
-                      className="text-xs text-red-400 font-bold hover:underline"
+                      className="text-xs text-red-600 font-bold hover:underline"
                     >
-                      Redo
+                      Record Again
                     </button>
                   </div>
                 ) : (
@@ -446,19 +443,19 @@ export default function PostListingScreen({ onPostCreated }) {
                     <button
                       type="button"
                       onClick={startRecording}
-                      className="w-20 h-20 bg-gradient-to-tr from-amber-500 to-amber-400 text-slate-950 rounded-full mx-auto flex items-center justify-center shadow-xl shadow-amber-500/20 active:scale-95 transition-transform"
+                      className="w-16 h-16 bg-slate-900 text-amber-400 rounded-full mx-auto flex items-center justify-center shadow-md hover:bg-slate-800 active:scale-95 transition-transform"
                     >
-                      <Mic className="w-10 h-10" />
+                      <Mic className="w-7 h-7" />
                     </button>
-                    <span className="font-bold text-white text-sm block">TAP & SPEAK NATURALLY</span>
-                    <span className="text-slate-400 text-xs block">AI auto-detects language, price & category!</span>
+                    <span className="font-bold text-slate-900 text-sm block">Tap & Speak in Any Language</span>
+                    <span className="text-slate-500 text-xs block">AI automatically detects category, pricing & intent!</span>
                   </div>
                 )}
 
                 {textNote && (
-                  <div className="mt-3 p-3 bg-slate-900 border border-slate-700 rounded-xl text-left">
-                    <span className="text-[10px] uppercase font-bold text-amber-400 block mb-1">AI Extracted Transcript:</span>
-                    <p className="text-xs text-white italic">"{textNote}"</p>
+                  <div className="mt-3 p-3 bg-white border border-slate-200 rounded-xl text-left shadow-2xs">
+                    <span className="text-[10px] uppercase font-bold text-amber-600 block mb-1">AI Extracted Transcript:</span>
+                    <p className="text-xs text-slate-900 italic font-medium">"{textNote}"</p>
                   </div>
                 )}
               </div>
@@ -467,31 +464,33 @@ export default function PostListingScreen({ onPostCreated }) {
                 rows={3}
                 value={textNote}
                 onChange={(e) => handleSmartTextChange(e.target.value)}
-                placeholder="Type in any language e.g. 'ye mal 1000 rupye ka hai'..."
-                className="w-full bg-slate-950 border-2 border-slate-700 text-white font-medium p-3 rounded-xl focus:border-amber-500 focus:outline-none text-sm placeholder-slate-600"
+                placeholder="Type description in any language e.g. '100 bricks 2 cement bags for 1000 rs'..."
+                className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-medium p-3 rounded-xl focus:bg-white focus:border-slate-400 focus:outline-none text-sm placeholder-slate-400 transition-colors"
               />
             )}
           </div>
 
-          <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2 text-slate-300 truncate">
-              <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span className="truncate">{autoDetectedLoc}</span>
+          {/* GPS Location Status Badge */}
+          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 text-slate-700 truncate">
+              <MapPin className="w-4 h-4 text-amber-600 shrink-0" />
+              <span className="truncate font-medium">{autoDetectedLoc}</span>
             </div>
-            <span className="text-emerald-400 font-mono font-bold shrink-0 ml-2">GPS ACTIVE</span>
+            <span className="text-emerald-700 font-mono font-bold shrink-0 ml-2 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">GPS ACTIVE</span>
           </div>
 
+          {/* Submit Button */}
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xl py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-transform disabled:opacity-50"
+            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black text-base py-4 rounded-2xl shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50"
           >
             {isSubmitting ? (
-              <span>UPLOADING TO AWS...</span>
+              <span>Publishing to AWS Cloud...</span>
             ) : (
               <>
-                <Upload className="w-6 h-6" />
-                <span>POST WASTE NOW</span>
+                <Upload className="w-5 h-5 text-amber-400" />
+                <span>Publish Listing Now</span>
               </>
             )}
           </button>
