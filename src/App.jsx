@@ -19,9 +19,13 @@ export default function App() {
 
   // Check login session & fetch live listings from AWS backend on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem('ecobuild_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    try {
+      const storedUser = localStorage.getItem('ecobuild_user');
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+      }
+    } catch (e) {
+      console.error('Failed to read user session:', e);
     }
 
     // Fetch live listings from API Gateway GET /listings
@@ -30,8 +34,12 @@ export default function App() {
       .then((data) => {
         if (Array.isArray(data)) {
           setListings(data);
-        } else if (data.body) {
-          setListings(JSON.parse(data.body));
+        } else if (data && data.body) {
+          try {
+            setListings(JSON.parse(data.body));
+          } catch (err) {
+            setListings([]);
+          }
         }
         setIsLoadingBackend(false);
       })
@@ -67,7 +75,7 @@ export default function App() {
       
       const data = await response.json();
       
-      if (response.ok && data.listing) {
+      if (response.ok && data && data.listing) {
         setListings((prevListings) => [data.listing, ...prevListings]);
       } else {
         setListings((prevListings) => [newListing, ...prevListings]);
@@ -100,15 +108,15 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-amber-500 selection:text-white flex flex-col justify-between">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-amber-500 selection:text-white flex flex-col justify-between overflow-x-hidden">
       
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col w-full">
         {!user ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-4">
+          <div className="flex-1 flex flex-col items-center justify-center p-4 w-full">
             <LoginScreen onLoginSuccess={setUser} />
           </div>
         ) : (
-          <>
+          <div className="flex-1 flex flex-col w-full">
             <Navbar
               activeTab={activeTab}
               setActiveTab={setActiveTab}
@@ -134,12 +142,12 @@ export default function App() {
                 <PostListingScreen onPostCreated={handlePostCreated} />
               )}
             </main>
-          </>
+          </div>
         )}
       </div>
 
-      {/* Global Copyright Footer (Always at the bottom of every screen) */}
-      <footer className="py-5 text-center text-xs text-slate-400 font-medium border-t border-slate-200 bg-white">
+      {/* Global Copyright Footer */}
+      <footer className="py-5 text-center text-xs text-slate-400 font-medium border-t border-slate-200 bg-white w-full">
         © {new Date().getFullYear()} EcoBuild Marketplace. Developed by <strong className="text-slate-700">Kernel_Devs</strong>. All rights reserved.
       </footer>
 
