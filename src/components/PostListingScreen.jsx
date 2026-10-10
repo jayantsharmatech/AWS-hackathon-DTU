@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Mic, Square, CheckCircle2, Upload, MapPin, RefreshCw, Phone, Sparkles } from 'lucide-react';
+import { Camera, Mic, Square, CheckCircle2, Upload, MapPin, RefreshCw, Phone, Sparkles, Play, Pause, RotateCcw } from 'lucide-react';
 
 const API_BASE_URL = 'https://6jzwkohkx5.execute-api.ap-south-1.amazonaws.com';
 
@@ -12,6 +12,8 @@ export default function PostListingScreen({ onPostCreated }) {
   const [textNote, setTextNote] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState(null);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -21,6 +23,7 @@ export default function PostListingScreen({ onPostCreated }) {
 
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+  const previewAudioRef = useRef(null);
   const timerRef = useRef(null);
   const fileInputRef = useRef(null);
   const recognitionRef = useRef(null);
@@ -42,6 +45,12 @@ export default function PostListingScreen({ onPostCreated }) {
     } else {
       setAutoDetectedLoc('GPS not supported by browser');
     }
+
+    return () => {
+      if (previewAudioRef.current) {
+        previewAudioRef.current.pause();
+      }
+    };
   }, []);
 
   const handleSmartTextChange = (rawText) => {
@@ -184,6 +193,7 @@ export default function PostListingScreen({ onPostCreated }) {
       mediaRecorderRef.current.onstop = () => {
         const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         setAudioBlob(blob);
+        setAudioUrl(URL.createObjectURL(blob));
       };
 
       mediaRecorderRef.current.start();
@@ -206,6 +216,21 @@ export default function PostListingScreen({ onPostCreated }) {
       setIsRecording(false);
       clearInterval(timerRef.current);
     }
+  };
+
+  const togglePreviewPlayback = () => {
+    if (!audioUrl) return;
+    if (isPlayingPreview) {
+      if (previewAudioRef.current) previewAudioRef.current.pause();
+      setIsPlayingPreview(false);
+      return;
+    }
+
+    const audio = new Audio(audioUrl);
+    previewAudioRef.current = audio;
+    audio.play();
+    setIsPlayingPreview(true);
+    audio.onended = () => setIsPlayingPreview(false);
   };
 
   const handleSubmit = (e) => {
@@ -233,7 +258,7 @@ export default function PostListingScreen({ onPostCreated }) {
       distance: 'Live GPS',
       description: textNote || 'Demolition waste ready for immediate pickup.',
       hasVoiceNote: !!audioBlob,
-      audioUrl: audioBlob ? URL.createObjectURL(audioBlob) : null,
+      audioUrl: audioUrl || null,
       phone: sellerPhone,
       sellerName: 'Verified Contributor',
       timeAgo: 'Just now'
@@ -422,20 +447,33 @@ export default function PostListingScreen({ onPostCreated }) {
                     <span className="text-xs text-slate-500 block font-medium">Tap red square when finished speaking</span>
                   </div>
                 ) : audioBlob ? (
-                  <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl">
-                    <div className="flex items-center gap-2 text-emerald-800 text-xs font-bold">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <span>Audio Recorded & Auto-Parsed Successfully</span>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl">
+                      <div className="flex items-center gap-2 text-emerald-800 text-xs font-bold">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <span>Audio Recorded & Auto-Parsed Successfully</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAudioBlob(null);
+                          setAudioUrl(null);
+                          setTextNote('');
+                        }}
+                        className="text-xs text-red-600 font-bold hover:underline flex items-center gap-1"
+                      >
+                        <RotateCcw className="w-3 h-3" /> Record Again
+                      </button>
                     </div>
+
+                    {/* Preview Player to listen to audio before uploading */}
                     <button
                       type="button"
-                      onClick={() => {
-                        setAudioBlob(null);
-                        setTextNote('');
-                      }}
-                      className="text-xs text-red-600 font-bold hover:underline"
+                      onClick={togglePreviewPlayback}
+                      className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-colors shadow-2xs"
                     >
-                      Record Again
+                      {isPlayingPreview ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                      <span>{isPlayingPreview ? 'Pause Audio Preview' : 'Listen Recorded Audio'}</span>
                     </button>
                   </div>
                 ) : (
