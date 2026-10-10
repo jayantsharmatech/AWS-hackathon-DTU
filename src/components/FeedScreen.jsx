@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, RefreshCw, Layers, MapPin, Phone, MessageSquare, Truck, X, CheckCircle2, Navigation, Volume2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, RefreshCw, Layers, MapPin, Phone, MessageSquare, Truck, X, CheckCircle2, Navigation, Volume2, Play, Pause } from 'lucide-react';
 import ListingCard from './ListingCard';
 
 const API_BASE_URL = 'https://6jzwkohkx5.execute-api.ap-south-1.amazonaws.com';
@@ -26,36 +26,47 @@ export default function FeedScreen() {
   const [selectedRadius, setSelectedRadius] = useState('All'); // Radius filter state
   const [selectedListing, setSelectedListing] = useState(null);
   const [userLocation, setUserLocation] = useState({ lat: null, lon: null });
-  const [speakingId, setSpeakingId] = useState(null);
+  
+  // Audio playback state for real seller voice notes
+  const [playingAudioId, setPlayingAudioId] = useState(null);
+  const audioRef = useRef(null);
 
-  // Text-to-Speech function for accessibility & regional users
-  const handleSpeak = (item, e) => {
+  const handlePlaySellerAudio = (item, e) => {
     if (e) e.stopPropagation();
-    if (!('speechSynthesis' in window)) {
-      alert('Text-to-speech is not supported on this browser.');
-      return;
-    }
-
-    // Cancel any ongoing speech
-    window.speechSynthesis.cancel();
-
     const itemId = item.PK || item.id;
-    if (speakingId === itemId) {
-      setSpeakingId(null);
+    const audioUrl = item.audioUrl;
+
+    if (!audioUrl) {
+      alert('The seller has not uploaded a voice note for this listing. Contact them directly via call or WhatsApp.');
       return;
     }
 
-    const priceText = (item.priceType === 'Free' || item.price === '0') ? 'Free pickup' : `Price: ${item.price} rupees`;
-    const textToSpeak = `Listing category: ${item.category}. ${priceText}. Description: ${item.description || item.title}. Located at: ${item.location}`;
-    const utterance = new SpeechSynthesisUtterance(textToSpeak);
-    utterance.lang = 'en-IN'; // Indian English context
-    utterance.rate = 0.9; // Slightly slower for clarity
+    if (playingAudioId === itemId) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      setPlayingAudioId(null);
+      return;
+    }
 
-    utterance.onend = () => setSpeakingId(null);
-    utterance.onerror = () => setSpeakingId(null);
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
 
-    setSpeakingId(itemId);
-    window.speechSynthesis.speak(utterance);
+    const audio = new Audio(audioUrl);
+    audioRef.current = audio;
+    
+    audio.play()
+      .then(() => setPlayingAudioId(itemId))
+      .catch((err) => {
+        console.error('Failed to play seller audio:', err);
+        alert('Could not play seller audio recording.');
+      });
+
+    audio.onended = () => {
+      setPlayingAudioId(null);
+    };
   };
 
   // Fetch listings & user GPS position on mount
@@ -92,6 +103,11 @@ export default function FeedScreen() {
         { enableHighAccuracy: true, timeout: 10000 }
       );
     }
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    };
   }, []);
 
   const handleDelete = async (id) => {
@@ -230,26 +246,31 @@ export default function FeedScreen() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {filteredListings.map((listing) => {
             const currentId = listing.PK || listing.id;
-            const isSpeaking = speakingId === currentId;
+            const isPlaying = playingAudioId === currentId;
             return (
-              <div key={currentId} className="relative group">
+              <div key={currentId} className="relative group bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-xs">
+                
                 <ListingCard 
                   listing={listing} 
                   onDelete={handleDelete} 
                   onSelect={setSelectedListing} 
                 />
-                {/* Floating Audio Read Aloud Button */}
-                <button
-                  onClick={(e) => handleSpeak(listing, e)}
-                  title="Listen to details"
-                  className={`absolute top-3 right-3 z-10 p-2 rounded-xl border shadow-sm transition-all flex items-center justify-center ${
-                    isSpeaking 
-                      ? 'bg-amber-500 border-amber-600 text-white animate-pulse' 
-                      : 'bg-white/90 backdrop-blur-xs border-slate-200 text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  <Volume2 className="w-3.5 h-3.5" />
-                </button>
+
+                {/* Listen Seller Audio Button */}
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <button
+                    onClick={(e) => handlePlaySellerAudio(listing, e)}
+                    className={`w-full py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+                      isPlaying
+                        ? 'bg-amber-500 border-amber-600 text-white animate-pulse'
+                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 text-amber-600" />}
+                    <span>{isPlaying ? 'Pause Seller Audio' : 'Listen Seller Audio'}</span>
+                  </button>
+                </div>
+
               </div>
             );
           })}
@@ -276,17 +297,6 @@ export default function FeedScreen() {
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  onClick={(e) => handleSpeak(selectedListing, e)}
-                  title="Listen to details"
-                  className={`p-2 rounded-xl border transition-all flex items-center justify-center ${
-                    speakingId === (selectedListing.PK || selectedListing.id)
-                      ? 'bg-amber-500 border-amber-600 text-white animate-pulse'
-                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  <Volume2 className="w-4 h-4" />
-                </button>
                 <button 
                   onClick={() => setSelectedListing(null)}
                   className="w-8 h-8 rounded-full bg-slate-200/60 hover:bg-slate-200 flex items-center justify-center text-slate-700 transition-colors"
@@ -310,6 +320,19 @@ export default function FeedScreen() {
                   Posted {selectedListing.timeAgo || 'Recently'}
                 </div>
               </div>
+
+              {/* Listen Seller Audio Banner inside Modal */}
+              <button
+                onClick={(e) => handlePlaySellerAudio(selectedListing, e)}
+                className={`w-full py-3 px-4 rounded-2xl border text-xs font-bold flex items-center justify-center gap-2.5 shadow-sm transition-all ${
+                  playingAudioId === (selectedListing.PK || selectedListing.id)
+                    ? 'bg-amber-500 border-amber-600 text-white animate-pulse'
+                    : 'bg-amber-50 border-amber-200 text-amber-900 hover:bg-amber-100'
+                }`}
+              >
+                {playingAudioId === (selectedListing.PK || selectedListing.id) ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 text-amber-600" />}
+                <span className="text-sm">Listen Seller Audio Note</span>
+              </button>
 
               {/* Seller Verification Box */}
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex items-center justify-between">
