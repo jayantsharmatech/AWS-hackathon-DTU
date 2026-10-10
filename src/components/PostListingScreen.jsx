@@ -261,7 +261,7 @@ export default function PostListingScreen({ onPostCreated }) {
       audioUrl: audioUrl || null,
       phone: sellerPhone,
       sellerName: 'Verified Contributor',
-      timeAgo: 'Just now'
+      createdAt: new Date().toISOString() // Real-time timestamp tracking
     };
 
     fetch(`${API_BASE_URL}/listings`, {
@@ -466,7 +466,6 @@ export default function PostListingScreen({ onPostCreated }) {
                       </button>
                     </div>
 
-                    {/* Preview Player to listen to audio before uploading */}
                     <button
                       type="button"
                       onClick={togglePreviewPlayback}

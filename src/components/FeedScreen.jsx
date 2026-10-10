@@ -18,6 +18,22 @@ const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
   return R * c; // Distance in km
 };
 
+// Helper function to calculate real-time elapsed intervals dynamically
+const getTimeAgo = (isoTimestamp) => {
+  if (!isoTimestamp) return 'Recently';
+  const now = new Date();
+  const past = new Date(isoTimestamp);
+  const diffInSeconds = Math.floor((now - past) / 1000);
+
+  if (diffInSeconds < 60) return 'Just now';
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes} min${diffInMinutes > 1 ? 's' : ''} ago`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+  const diffInDays = Math.floor(diffInHours / 24);
+  return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+};
+
 export default function FeedScreen() {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -318,7 +334,7 @@ export default function FeedScreen() {
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute bottom-3 left-3 bg-slate-900/80 backdrop-blur-md text-white text-xs px-3 py-1 rounded-lg font-bold">
-                  Posted {selectedListing.timeAgo || 'Recently'}
+                  Posted {getTimeAgo(selectedListing.createdAt || selectedListing.timeAgo)}
                 </div>
               </div>
 
