@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, RefreshCw, Layers, MapPin, Phone, MessageSquare, Truck, X, CheckCircle2, Navigation, Volume2, Play, Pause } from 'lucide-react';
+import { Search, RefreshCw, Layers, MapPin, Phone, MessageSquare, Truck, X, CheckCircle2, Navigation, Play, Pause } from 'lucide-react';
 import ListingCard from './ListingCard';
 
 const API_BASE_URL = 'https://6jzwkohkx5.execute-api.ap-south-1.amazonaws.com';
@@ -29,6 +29,7 @@ export default function FeedScreen() {
   
   // Audio playback state for real seller voice notes
   const [playingAudioId, setPlayingAudioId] = useState(null);
+  const [dumperBookingSuccess, setDumperBookingSuccess] = useState(false);
   const audioRef = useRef(null);
 
   const handlePlaySellerAudio = (item, e) => {
@@ -358,18 +359,28 @@ export default function FeedScreen() {
                 </p>
               </div>
 
-              {/* Exact Location & GPS */}
+              {/* Exact Location & GPS (Clickable to open Google Maps) */}
               <div className="space-y-1.5">
                 <h5 className="text-xs font-black uppercase text-slate-400 tracking-wider">Pickup Location & Coordinates</h5>
-                <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 flex items-center gap-3">
-                  <MapPin className="w-5 h-5 text-amber-600 shrink-0" />
-                  <div>
-                    <p className="text-xs font-bold text-slate-900">{selectedListing.location}</p>
-                    <p className="text-[11px] font-mono text-slate-500">
-                      Lat: {selectedListing.lat || '28.6139'}, Lon: {selectedListing.lon || '77.2090'}
-                    </p>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${selectedListing.lat || '28.6139'},${selectedListing.lon || '77.2090'}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-slate-50 hover:bg-slate-100 p-3.5 rounded-2xl border border-slate-200 flex items-center justify-between transition-colors group"
+                >
+                  <div className="flex items-center gap-3 truncate">
+                    <MapPin className="w-5 h-5 text-amber-600 shrink-0" />
+                    <div className="truncate">
+                      <p className="text-xs font-bold text-slate-900 truncate">{selectedListing.location}</p>
+                      <p className="text-[11px] font-mono text-slate-500">
+                        Lat: {selectedListing.lat || '28.6139'}, Lon: {selectedListing.lon || '77.2090'}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                  <span className="text-[11px] font-bold text-amber-600 group-hover:underline shrink-0 ml-2">
+                    Open Maps →
+                  </span>
+                </a>
               </div>
 
             </div>
@@ -397,7 +408,7 @@ export default function FeedScreen() {
               </a>
 
               <button
-                onClick={() => alert('Logistics partner assigned! A pickup dumper has been notified for your location.')}
+                onClick={() => setDumperBookingSuccess(true)}
                 className="bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold py-3 px-3 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-2xs transition-colors"
               >
                 <Truck className="w-4 h-4 text-amber-400" />
@@ -405,6 +416,32 @@ export default function FeedScreen() {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Professional Dumper Booking Success Modal */}
+      {dumperBookingSuccess && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm text-center space-y-4 shadow-2xl border border-slate-200">
+            <div className="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
+              <CheckCircle2 className="w-8 h-8" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-base font-black text-slate-900">Dumper Logistics Dispatched!</h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Your heavy C&D waste transport request has been logged. A verified dumper truck partner has been assigned to your GPS coordinates.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setDumperBookingSuccess(false);
+                setSelectedListing(null);
+              }}
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-2xl text-xs shadow-sm transition-transform active:scale-95"
+            >
+              Done
+            </button>
           </div>
         </div>
       )}
