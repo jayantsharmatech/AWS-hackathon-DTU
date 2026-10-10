@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, RefreshCw, Layers, MapPin, Phone, MessageSquare, Truck, X, CheckCircle2, Navigation } from 'lucide-react';
+import { Search, RefreshCw, Layers, MapPin, Phone, MessageSquare, Truck, X, CheckCircle2, Navigation, Volume2 } from 'lucide-react';
 import ListingCard from './ListingCard';
 
 const API_BASE_URL = 'https://6jzwkohkx5.execute-api.ap-south-1.amazonaws.com';
@@ -26,6 +26,37 @@ export default function FeedScreen() {
   const [selectedRadius, setSelectedRadius] = useState('All'); // Radius filter state
   const [selectedListing, setSelectedListing] = useState(null);
   const [userLocation, setUserLocation] = useState({ lat: null, lon: null });
+  const [speakingId, setSpeakingId] = useState(null);
+
+  // Text-to-Speech function for accessibility & regional users
+  const handleSpeak = (item, e) => {
+    if (e) e.stopPropagation();
+    if (!('speechSynthesis' in window)) {
+      alert('Text-to-speech is not supported on this browser.');
+      return;
+    }
+
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+
+    const itemId = item.PK || item.id;
+    if (speakingId === itemId) {
+      setSpeakingId(null);
+      return;
+    }
+
+    const priceText = (item.priceType === 'Free' || item.price === '0') ? 'Free pickup' : `Price: ${item.price} rupees`;
+    const textToSpeak = `Listing category: ${item.category}. ${priceText}. Description: ${item.description || item.title}. Located at: ${item.location}`;
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    utterance.lang = 'en-IN'; // Indian English context
+    utterance.rate = 0.9; // Slightly slower for clarity
+
+    utterance.onend = () => setSpeakingId(null);
+    utterance.onerror = () => setSpeakingId(null);
+
+    setSpeakingId(itemId);
+    window.speechSynthesis.speak(utterance);
+  };
 
   // Fetch listings & user GPS position on mount
   const fetchListings = async () => {
@@ -197,14 +228,31 @@ export default function FeedScreen() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {filteredListings.map((listing) => (
-            <ListingCard 
-              key={listing.PK || listing.id} 
-              listing={listing} 
-              onDelete={handleDelete} 
-              onSelect={setSelectedListing} 
-            />
-          ))}
+          {filteredListings.map((listing) => {
+            const currentId = listing.PK || listing.id;
+            const isSpeaking = speakingId === currentId;
+            return (
+              <div key={currentId} className="relative group">
+                <ListingCard 
+                  listing={listing} 
+                  onDelete={handleDelete} 
+                  onSelect={setSelectedListing} 
+                />
+                {/* Floating Audio Read Aloud Button */}
+                <button
+                  onClick={(e) => handleSpeak(listing, e)}
+                  title="Listen to details"
+                  className={`absolute top-3 right-3 z-10 p-2 rounded-xl border shadow-sm transition-all flex items-center justify-center ${
+                    isSpeaking 
+                      ? 'bg-amber-500 border-amber-600 text-white animate-pulse' 
+                      : 'bg-white/90 backdrop-blur-xs border-slate-200 text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Volume2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -227,12 +275,25 @@ export default function FeedScreen() {
                   {(selectedListing.priceType === 'Free' || selectedListing.price === '0') ? 'Free Pickup' : `₹ ${selectedListing.price}`}
                 </span>
               </div>
-              <button 
-                onClick={() => setSelectedListing(null)}
-                className="w-8 h-8 rounded-full bg-slate-200/60 hover:bg-slate-200 flex items-center justify-center text-slate-700 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => handleSpeak(selectedListing, e)}
+                  title="Listen to details"
+                  className={`p-2 rounded-xl border transition-all flex items-center justify-center ${
+                    speakingId === (selectedListing.PK || selectedListing.id)
+                      ? 'bg-amber-500 border-amber-600 text-white animate-pulse'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Volume2 className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => setSelectedListing(null)}
+                  className="w-8 h-8 rounded-full bg-slate-200/60 hover:bg-slate-200 flex items-center justify-center text-slate-700 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Modal Scrollable Content */}
