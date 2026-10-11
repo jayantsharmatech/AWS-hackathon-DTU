@@ -4,7 +4,7 @@
 
 ### Construction & Demolition (C&D) Waste Marketplace
 
-**A serverless, real-time, hyperlocal marketplace that connects construction sites, contractors and recycling buyers, and dispatches the transport to move the material.**
+**A serverless, real-time, hyperlocal marketplace that connects construction sites, contractors and recycling buyers and general public, and dispatches the transport to move the material.**
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-Online-brightgreen?style=for-the-badge&logo=vercel&logoColor=white)](https://aws-hackathon-dtu-eight.vercel.app)
 [![Architecture](https://img.shields.io/badge/Architecture-Serverless-FF9900?style=for-the-badge&logo=amazonaws&logoColor=white)](#architecture)
@@ -44,7 +44,7 @@
 
 ## Overview
 
-EcoBuild is a full-stack cloud application that connects construction sites, contractors and recycling material buyers in a real-time, hyperlocal marketplace. The platform supports sustainable urban development by optimizing the lifecycle and recycling of construction and demolition waste.
+EcoBuild is a full-stack cloud application that connects construction sites, contractors ,general public and recycling material buyers in a real-time, hyperlocal marketplace. The platform supports sustainable urban development by optimizing the lifecycle and recycling of construction and demolition waste.
 
 | Challenge | EcoBuild Response |
 |---|---|
