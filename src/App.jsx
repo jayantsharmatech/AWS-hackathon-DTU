@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
-import LoginScreen from './components/LoginScreen';
 import FeedScreen from './components/FeedScreen';
 import PostListingScreen from './components/PostListingScreen';
 import { Truck, CheckCircle2, X } from 'lucide-react';
@@ -9,7 +8,8 @@ import { Truck, CheckCircle2, X } from 'lucide-react';
 const API_BASE_URL = 'https://6jzwkohkx5.execute-api.ap-south-1.amazonaws.com';
 
 export default function App() {
-  const [user, setUser] = useState(null);
+  // Bypass login by setting a default demo builder profile directly
+  const [user, setUser] = useState({ name: 'Verified Contributor', role: 'Builder / Contractor' });
   const [activeTab, setActiveTab] = useState('feed'); // 'feed' | 'post'
   const [listings, setListings] = useState([]); 
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -17,18 +17,8 @@ export default function App() {
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [isLoadingBackend, setIsLoadingBackend] = useState(true);
 
-  // Check login session & fetch live listings from AWS backend on mount
+  // Fetch live listings from AWS backend on mount
   useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem('ecobuild_user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
-    } catch (e) {
-      console.error('Failed to read user session:', e);
-    }
-
-    // Fetch live listings from API Gateway GET /listings
     fetch(`${API_BASE_URL}/listings`)
       .then((res) => res.json())
       .then((data) => {
@@ -61,8 +51,8 @@ export default function App() {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('ecobuild_user');
-    setUser(null);
+    // Optional reset or keep direct access
+    setUser({ name: 'Verified Contributor', role: 'Builder / Contractor' });
   };
 
   const handlePostCreated = async (newListing) => {
@@ -111,39 +101,33 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-amber-500 selection:text-white flex flex-col justify-between overflow-x-hidden">
       
       <div className="flex-1 flex flex-col w-full">
-        {!user ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-4 w-full">
-            <LoginScreen onLoginSuccess={setUser} />
-          </div>
-        ) : (
-          <div className="flex-1 flex flex-col w-full">
-            <Navbar
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              user={user}
-              onLogout={handleLogout}
-              isOnline={isOnline}
-            />
+        <div className="flex-1 flex flex-col w-full">
+          <Navbar
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            user={user}
+            onLogout={handleLogout}
+            isOnline={isOnline}
+          />
 
-            <main className="max-w-3xl mx-auto py-4 flex-1 w-full px-4">
-              {activeTab === 'feed' ? (
-                isLoadingBackend ? (
-                  <div className="text-center py-20 text-slate-400 text-xs font-bold animate-pulse">
-                    Syncing live AWS cloud database...
-                  </div>
-                ) : (
-                  <FeedScreen 
-                    listings={listings} 
-                    onBookTruck={(item) => setSelectedTruckModal(item)} 
-                    onDeleteListing={handleDeleteListing}
-                  />
-                )
+          <main className="max-w-3xl mx-auto py-4 flex-1 w-full px-4">
+            {activeTab === 'feed' ? (
+              isLoadingBackend ? (
+                <div className="text-center py-20 text-slate-400 text-xs font-bold animate-pulse">
+                  Syncing live AWS cloud database...
+                </div>
               ) : (
-                <PostListingScreen onPostCreated={handlePostCreated} />
-              )}
-            </main>
-          </div>
-        )}
+                <FeedScreen 
+                  listings={listings} 
+                  onBookTruck={(item) => setSelectedTruckModal(item)} 
+                  onDeleteListing={handleDeleteListing}
+                />
+              )
+            ) : (
+              <PostListingScreen onPostCreated={handlePostCreated} />
+            )}
+          </main>
+        </div>
       </div>
 
       {/* Global Copyright Footer */}
